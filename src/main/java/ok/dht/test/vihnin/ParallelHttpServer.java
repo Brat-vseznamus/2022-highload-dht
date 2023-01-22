@@ -6,7 +6,9 @@ import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
 import one.nio.http.Request;
 import one.nio.http.Response;
+import one.nio.net.ConnectionString;
 import one.nio.net.Session;
+import one.nio.pool.Pool;
 import one.nio.server.SelectorThread;
 import one.nio.util.Utf8;
 import org.slf4j.Logger;
@@ -151,7 +153,7 @@ public class ParallelHttpServer extends HttpServer {
 
     private void handleForeignRequest(Request request, HttpSession session) {
         try {
-            super.handleRequest(request, session);
+            session.sendResponse(responseManager.handleRequest(request));
         } catch (IOException e) {
             handleException(session, e);
         }
@@ -267,6 +269,8 @@ public class ParallelHttpServer extends HttpServer {
     public synchronized void stop() {
         executorService.shutdown();
         internalRequestService.shutdown();
+
+        clients.get().values().forEach(Pool::close);
 
         for (SelectorThread selectorThread : selectors) {
             for (Session session : selectorThread.selector) {

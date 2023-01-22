@@ -15,7 +15,6 @@ public class HighLoadService implements Service {
     private final ServiceConfig config;
     private HttpServer server;
     private DataBase<String, byte[]> storage;
-
     private ResponseManager responseManager;
 
     public HighLoadService(ServiceConfig config) {
