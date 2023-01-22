@@ -6,9 +6,7 @@ import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
 import one.nio.http.Request;
 import one.nio.http.Response;
-import one.nio.net.ConnectionString;
 import one.nio.net.Session;
-import one.nio.pool.Pool;
 import one.nio.server.SelectorThread;
 import one.nio.util.Utf8;
 import org.slf4j.Logger;
@@ -198,7 +196,7 @@ public class ParallelHttpServer extends HttpServer {
                     responseAccumulator.acknowledgeFailed();
                 } else {
                     String value = ServiceUtils.getHeaderValue(handleSuccess, TIME_HEADER_NAME);
-                    if (value == null) {
+                    if (value == null || !ServiceUtils.isOk(handleSuccess.getStatus())) {
                         responseAccumulator.acknowledgeFailed();
                     } else {
                         long currTime = Long.parseLong(value);
@@ -269,8 +267,6 @@ public class ParallelHttpServer extends HttpServer {
     public synchronized void stop() {
         executorService.shutdown();
         internalRequestService.shutdown();
-
-        clients.get().values().forEach(Pool::close);
 
         for (SelectorThread selectorThread : selectors) {
             for (Session session : selectorThread.selector) {
