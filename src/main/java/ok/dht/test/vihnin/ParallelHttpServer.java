@@ -154,7 +154,7 @@ public class ParallelHttpServer extends HttpServer {
 
     private void handleForeignRequest(Request request, HttpSession session) {
         try {
-            super.handleRequest(request, session);
+            session.sendResponse(responseManager.handleRequest(request));
         } catch (IOException e) {
             handleException(session, e);
         }
@@ -205,7 +205,7 @@ public class ParallelHttpServer extends HttpServer {
             Response handleSuccess = neighbor.equals(clusterManager.getUrlByShard(shard))
                     ? responseManager.handleRequest(request)
                     : handleAckRequest(request, neighbor);
-            if (handleSuccess != null) {
+            if (handleSuccess != null && ServiceUtils.isOk(handleSuccess.getStatus())) {
                 String value = getHeaderValue(handleSuccess, TIME_HEADER_NAME);
                 if (value != null) {
                     long currTime = Long.parseLong(value);

@@ -23,7 +23,7 @@ public class ResponseManager {
     @Path(ENDPOINT)
     @RequestMethod(Request.METHOD_GET)
     public Response handleGet(@Param(value = "id", required = true) String id) {
-        if (storage == null) return emptyResponse(Response.NOT_FOUND);
+        if (storage == null) return emptyResponse(Response.SERVICE_UNAVAILABLE);
         if (id == null || id.isEmpty()) return emptyResponse(Response.BAD_REQUEST);
 
         try {
@@ -50,7 +50,7 @@ public class ResponseManager {
     @Path(ENDPOINT)
     @RequestMethod(Request.METHOD_PUT)
     public Response handlePut(@Param(value = "id", required = true) String id, Request request) {
-        if (storage == null) return emptyResponse(Response.NOT_FOUND);
+        if (storage == null) return emptyResponse(Response.SERVICE_UNAVAILABLE);
         if (id == null || id.isEmpty()) return emptyResponse(Response.BAD_REQUEST);
 
         var requestBody = request.getBody();
@@ -63,7 +63,7 @@ public class ResponseManager {
     @Path(ENDPOINT)
     @RequestMethod(Request.METHOD_DELETE)
     public Response handleDelete(@Param(value = "id", required = true) String id, Request request) {
-        if (storage == null) return emptyResponse(Response.NOT_FOUND);
+        if (storage == null) return emptyResponse(Response.SERVICE_UNAVAILABLE);
         if (id == null || id.isEmpty()) return emptyResponse(Response.BAD_REQUEST);
 
         storage.put(id, tombstone(getTimestamp(request)));

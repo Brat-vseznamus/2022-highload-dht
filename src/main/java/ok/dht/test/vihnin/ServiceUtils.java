@@ -61,4 +61,8 @@ public final class ServiceUtils {
         }
     }
 
+    public static boolean isOk(int status) {
+        return 200 <= status && status < 400;
+    }
+
 }
