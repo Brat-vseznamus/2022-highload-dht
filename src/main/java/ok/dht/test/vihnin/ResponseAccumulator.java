@@ -38,21 +38,18 @@ public class ResponseAccumulator {
     }
 
     public void acknowledgeFailed() {
-        acknowledge(false, null, null, null);
+        answer(acknowledged.get());
     }
 
     public void acknowledgeSucceed(Long time, Integer status, byte[] data) {
-        acknowledge(true, time, status, data);
-    }
-
-    private void acknowledge(boolean success, Long time, Integer status, byte[] data) {
-        if (success && method == Request.METHOD_GET) {
+        if (method == Request.METHOD_GET) {
             Data newData = new Data(status, time, data);
-            while (bestData.get().time < time) {
-                Data curData = bestData.get();
+            Data curData = bestData.get();
+            while (curData.time < time) {
                 if (bestData.compareAndSet(curData, newData)) {
                     break;
                 }
+                curData = bestData.get();
             }
         }
 
