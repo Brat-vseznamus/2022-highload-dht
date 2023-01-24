@@ -1,20 +1,26 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
-import ok.dht.test.vihnin.database.DataBase;
+import ok.dht.test.vihnin.code.database.DataBase;
 import one.nio.http.Param;
 import one.nio.http.Path;
 import one.nio.http.Request;
 import one.nio.http.RequestMethod;
 import one.nio.http.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static ok.dht.test.vihnin.ParallelHttpServer.TIME_HEADER_NAME;
-import static ok.dht.test.vihnin.ServiceUtils.ENDPOINT;
-import static ok.dht.test.vihnin.ServiceUtils.emptyResponse;
+import java.util.Arrays;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static ok.dht.test.vihnin.code.ParallelHttpServer.TIME_HEADER_NAME;
+import static ok.dht.test.vihnin.code.ServiceUtils.ENDPOINT;
+import static ok.dht.test.vihnin.code.ServiceUtils.emptyResponse;
 
 public class ResponseManager {
-
+    private static final Logger logger = LoggerFactory.getLogger(ResponseManager.class);
     private static final byte TOMBSTONE = (byte) 0xFFL;
-    private final DataBase<String, byte[]> storage;
+    public final DataBase<String, byte[]> storage;
 
     public ResponseManager(DataBase<String, byte[]> storage) {
         this.storage = storage;
@@ -74,13 +80,17 @@ public class ResponseManager {
     public Response handleRequest(Request request) {
         String id = request.getParameter("id=");
 
-        return switch (request.getMethod()) {
-            case Request.METHOD_GET -> handleGet(id);
-            case Request.METHOD_PUT -> handlePut(id, request);
-            case Request.METHOD_DELETE -> handleDelete(id, request);
-            default -> null;
-        };
-
+        try {
+            return switch (request.getMethod()) {
+                case Request.METHOD_GET -> handleGet(id);
+                case Request.METHOD_PUT -> handlePut(id, request);
+                case Request.METHOD_DELETE -> handleDelete(id, request);
+                default -> null;
+            };
+        } catch (Exception e) {
+            logger.error("Handle request failed:", e);
+            return null;
+        }
     }
 
     private static long getTimestamp(Request request) {

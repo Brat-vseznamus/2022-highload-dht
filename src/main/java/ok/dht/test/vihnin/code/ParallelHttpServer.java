@@ -1,6 +1,9 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import ok.dht.ServiceConfig;
+import ok.dht.test.vihnin.code.inspector.ActualInspectorService;
+import ok.dht.test.vihnin.code.inspector.InspectorService;
+import ok.dht.test.vihnin.code.inspector.RedirectInspectorService;
 import one.nio.http.HttpException;
 import one.nio.http.HttpServer;
 import one.nio.http.HttpSession;
@@ -24,8 +27,10 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import static ok.dht.test.vihnin.ServiceUtils.emptyResponse;
-import static ok.dht.test.vihnin.ServiceUtils.handleSingleAcknowledgment;
+import static ok.dht.test.vihnin.code.ServiceUtils.SERVICE_ACCUM_ENDPOINT;
+import static ok.dht.test.vihnin.code.ServiceUtils.SERVICE_ENDPOINT;
+import static ok.dht.test.vihnin.code.ServiceUtils.emptyResponse;
+import static ok.dht.test.vihnin.code.ServiceUtils.handleSingleAcknowledgment;
 
 public class ParallelHttpServer extends HttpServer {
     private static final Logger logger = LoggerFactory.getLogger(ParallelHttpServer.class);
@@ -44,6 +49,7 @@ public class ParallelHttpServer extends HttpServer {
     private final Integer shard;
 
     private final ResponseManager responseManager;
+    private final InspectorService inspectorService;
 
     private final ThreadLocal<Map<String, HttpClient>> javaClients;
 
@@ -69,11 +75,21 @@ public class ParallelHttpServer extends HttpServer {
             Object... routers) throws IOException {
         super(ServiceUtils.createConfigFromPort(config.selfPort()), routers);
         this.responseManager = responseManager;
+        this.inspectorService = config.getInspectorPort() == config.selfPort()
+                ? new ActualInspectorService(config)
+                : new RedirectInspectorService(config.selfUrl() + ":" + config.getInspectorPort());
 
         addRequestHandlers(this.responseManager);
 
         this.clusterManager = new ClusterManager(config.clusterUrls());
         this.shard = clusterManager.getShardByUrl(config.selfUrl());
+
+        this.inspectorService.setData(
+                responseManager.storage::count,
+                () -> (long) ((ThreadPoolExecutor) executorService).getQueue().size()
+        );
+
+        this.inspectorService.start();
 
         ServiceUtils.distributeVNodes(shardHelper, clusterManager.clusterSize());
 
@@ -88,70 +104,88 @@ public class ParallelHttpServer extends HttpServer {
 
     @Override
     public void handleRequest(Request request, HttpSession session) throws IOException {
-        if (!methodAllowed(request.getMethod())) {
-            session.sendResponse(emptyResponse(Response.METHOD_NOT_ALLOWED));
-            return;
+        if (request.getPath().equals(SERVICE_ENDPOINT)) {
+            var response = inspectorService.handleRequest(request);
+            if (response == null) {
+                session.sendError(Response.SERVICE_UNAVAILABLE, "unknown reason");
+            } else {
+                session.sendResponse(response);
+            }
         }
-
-        String id = request.getParameter("id=");
-        String ackRaw = request.getParameter("ack=");
-        String fromRaw = request.getParameter("from=");
-
-        if (id == null || id.isEmpty()) {
-            session.sendResponse(emptyResponse(Response.BAD_REQUEST));
-            return;
-        }
-
-        int ack;
-        int from;
-
-        if (ackRaw == null || fromRaw == null) {
-            from = clusterManager.clusterSize();
-            ack = clusterManager.clusterSize() / 2 + 1;
+        if (request.getPath().equals(SERVICE_ACCUM_ENDPOINT)) {
+            var response = inspectorService.handleInfoRequest(request);
+            if (response == null) {
+                session.sendError(Response.SERVICE_UNAVAILABLE, "unknown reason");
+            } else {
+                session.sendResponse(response);
+            }
         } else {
-            try {
-                ack = Integer.parseInt(ackRaw);
-                from = Integer.parseInt(fromRaw);
-            } catch (NumberFormatException e) {
-                session.sendResponse(
-                        new Response(
-                                Response.BAD_REQUEST,
-                                Utf8.toBytes("ack and from must be integers")
-                        )
-                );
+            if (!methodAllowed(request.getMethod())) {
+                session.sendResponse(emptyResponse(Response.METHOD_NOT_ALLOWED));
                 return;
             }
-        }
 
-        if (ack > from || ack < 1) {
-            session.sendResponse(emptyResponse(Response.BAD_REQUEST));
-            return;
-        }
+            String id = request.getParameter("id=");
+            String ackRaw = request.getParameter("ack=");
+            String fromRaw = request.getParameter("from=");
 
-        int destinationShardId = getShardId(id);
-        String innerHeaderValue = ServiceUtils.getHeaderValue(request, INNER_HEADER_NAME);
-
-        try {
-            if (innerHeaderValue == null) {
-                internalRequestService.submit(() -> {
-                    requestTask(request, session, destinationShardId, ack, from);
-                });
-            } else {
-                executorService.submit(() -> {
-                    handleForeignRequest(request, session);
-                });
+            if (id == null || id.isEmpty()) {
+                session.sendResponse(emptyResponse(Response.BAD_REQUEST));
+                return;
             }
-        } catch (RejectedExecutionException e) {
-            logger.error(e.getMessage());
-            session.sendError(
-                    Response.SERVICE_UNAVAILABLE,
-                    "Handling was rejected due to some internal problem");
+
+            int ack;
+            int from;
+
+            if (ackRaw == null || fromRaw == null) {
+                from = clusterManager.clusterSize();
+                ack = clusterManager.clusterSize() / 2 + 1;
+            } else {
+                try {
+                    ack = Integer.parseInt(ackRaw);
+                    from = Integer.parseInt(fromRaw);
+                } catch (NumberFormatException e) {
+                    session.sendResponse(
+                            new Response(
+                                    Response.BAD_REQUEST,
+                                    Utf8.toBytes("ack and from must be integers")
+                            )
+                    );
+                    return;
+                }
+            }
+
+            if (ack > from || ack < 1) {
+                session.sendResponse(emptyResponse(Response.BAD_REQUEST));
+                return;
+            }
+
+            int destinationShardId = getShardId(id);
+            String innerHeaderValue = ServiceUtils.getHeaderValue(request, INNER_HEADER_NAME);
+
+            try {
+                if (innerHeaderValue == null) {
+                    internalRequestService.submit(() -> {
+                        requestTask(request, session, destinationShardId, ack, from);
+                    });
+                } else {
+                    executorService.submit(() -> {
+                        handleForeignRequest(request, session);
+                    });
+                }
+            } catch (RejectedExecutionException e) {
+                logger.error(e.getMessage());
+                session.sendError(
+                        Response.SERVICE_UNAVAILABLE,
+                        "Handling was rejected due to some internal problem");
+            }
         }
     }
 
     private void handleForeignRequest(Request request, HttpSession session) {
         try {
-            session.sendResponse(responseManager.handleRequest(request));
+            // return super because of creating new endpoint
+            super.handleRequest(request, session);
         } catch (IOException e) {
             handleException(session, e);
         }
@@ -195,15 +229,23 @@ public class ParallelHttpServer extends HttpServer {
                 if (handleSuccess == null) {
                     responseAccumulator.acknowledgeFailed();
                 } else {
-                    String value = ServiceUtils.getHeaderValue(handleSuccess, TIME_HEADER_NAME);
-                    if (value == null || !ServiceUtils.isOk(handleSuccess.getStatus())) {
-                        responseAccumulator.acknowledgeFailed();
+                    if (request.getMethod() == Request.METHOD_GET) {
+                        String value = ServiceUtils.getHeaderValue(handleSuccess, TIME_HEADER_NAME);
+                        if (value == null || !ServiceUtils.isOk(handleSuccess.getStatus())) {
+                            responseAccumulator.acknowledgeFailed();
+                        } else {
+                            long currTime = Long.parseLong(value);
+                            responseAccumulator.acknowledgeSucceed(
+                                    currTime,
+                                    handleSuccess.getStatus(),
+                                    handleSuccess.getBody());
+                        }
                     } else {
-                        long currTime = Long.parseLong(value);
-                        responseAccumulator.acknowledgeSucceed(
-                                currTime,
-                                handleSuccess.getStatus(),
-                                handleSuccess.getBody());
+                        if (ServiceUtils.isOk(handleSuccess.getStatus())) {
+                            responseAccumulator.acknowledgeSucceed(-1L, -1, null);
+                        } else {
+                            responseAccumulator.acknowledgeFailed();
+                        }
                     }
                 }
             } else {
@@ -267,6 +309,7 @@ public class ParallelHttpServer extends HttpServer {
     public synchronized void stop() {
         executorService.shutdown();
         internalRequestService.shutdown();
+        inspectorService.stop();
 
         for (SelectorThread selectorThread : selectors) {
             for (Session session : selectorThread.selector) {

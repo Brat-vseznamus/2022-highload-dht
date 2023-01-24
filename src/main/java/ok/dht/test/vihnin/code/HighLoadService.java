@@ -1,10 +1,10 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import ok.dht.Service;
 import ok.dht.ServiceConfig;
 import ok.dht.test.ServiceFactory;
-import ok.dht.test.vihnin.database.DataBase;
-import ok.dht.test.vihnin.database.DataBaseRocksDBImpl;
+import ok.dht.test.vihnin.code.database.DataBase;
+import ok.dht.test.vihnin.code.database.DataBaseRocksDBImpl;
 import one.nio.http.HttpServer;
 import org.rocksdb.RocksDBException;
 

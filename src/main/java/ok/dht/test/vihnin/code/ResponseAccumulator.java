@@ -1,4 +1,4 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import one.nio.http.HttpSession;
 import one.nio.http.Request;
@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static ok.dht.test.vihnin.ParallelHttpServer.processAcknowledgment;
+import static ok.dht.test.vihnin.code.ParallelHttpServer.processAcknowledgment;
 
 public class ResponseAccumulator {
     private final HttpSession session;

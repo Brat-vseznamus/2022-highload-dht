@@ -1,4 +1,4 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import ok.dht.ServiceConfig;
 import org.slf4j.Logger;
@@ -14,6 +14,7 @@ import java.util.concurrent.TimeoutException;
 public final class ServerStart {
     private static final Logger logger = LoggerFactory.getLogger(ServerStart.class);
     private static final List<String> PORTS = List.of("19234", "19235");
+//    private static final List<String> PORTS = List.of("19234");
     private static final String HOST = "http://localhost";
 
     private ServerStart() {
@@ -28,7 +29,8 @@ public final class ServerStart {
                 port,
                 url,
                 PORTS.stream().map(p -> HOST + ":" + p).toList(),
-                Path.of("/home/fedor/Documents/uni-data/highload/trash/" + port)
+                Path.of("/home/fedor/Documents/uni-data/highload/trash/" + port),
+                Integer.parseInt(PORTS.get(0))
         );
         new HighLoadService(cfg).start().get(1, TimeUnit.SECONDS);
         logger.info("[SERVER START] Socket is ready: " + url);

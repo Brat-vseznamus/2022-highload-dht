@@ -1,4 +1,4 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import one.nio.http.HttpServerConfig;
 import one.nio.http.Request;
@@ -16,15 +16,18 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-import static ok.dht.test.vihnin.ParallelHttpServer.INNER_HEADER_NAME;
-import static ok.dht.test.vihnin.ParallelHttpServer.INNER_HEADER_VALUE;
-import static ok.dht.test.vihnin.ParallelHttpServer.TIME_HEADER_NAME;
+import static ok.dht.test.vihnin.code.ParallelHttpServer.INNER_HEADER_NAME;
+import static ok.dht.test.vihnin.code.ParallelHttpServer.INNER_HEADER_VALUE;
+import static ok.dht.test.vihnin.code.ParallelHttpServer.TIME_HEADER_NAME;
 
 public final class ServiceUtils {
     private static final Logger logger = LoggerFactory.getLogger(ServiceUtils.class);
     // must be > 2
     public static final int VNODE_NUMBER_PER_SERVER = 5;
     public static final String ENDPOINT = "/v0/entity";
+    public static final String SERVICE_ENDPOINT = "/v0/inspector";
+
+    public static final String SERVICE_ACCUM_ENDPOINT = SERVICE_ENDPOINT + "/info";
     public static final int AWAIT_DURATION_MILLS = 1200;
 
     private ServiceUtils() {
@@ -75,7 +78,7 @@ public final class ServiceUtils {
         }
     }
 
-    static HttpRequest createJavaRequest(Request request, String destinationUrl) throws URISyntaxException {
+    public static HttpRequest createJavaRequest(Request request, String destinationUrl) throws URISyntaxException {
         var builder = HttpRequest.newBuilder()
                 .uri(new URI(destinationUrl + request.getURI()))
                 .method(request.getMethodName(),

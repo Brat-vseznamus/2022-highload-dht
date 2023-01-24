@@ -1,4 +1,4 @@
-package ok.dht.test.vihnin;
+package ok.dht.test.vihnin.code;
 
 import java.util.HashMap;
 import java.util.HashSet;
