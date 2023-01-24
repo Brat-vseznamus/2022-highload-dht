@@ -25,6 +25,19 @@ public final class ServiceConfig {
         this.inspectorPort = inspectorPort;
     }
 
+    public ServiceConfig(
+            int selfPort,
+            String selfUrl,
+            List<String> clusterUrls,
+            Path workingDir
+    ) {
+        this.selfPort = selfPort;
+        this.selfUrl = selfUrl;
+        this.clusterUrls = clusterUrls;
+        this.workingDir = workingDir;
+        this.inspectorPort = selfPort;
+    }
+
     public int selfPort() {
         return selfPort;
     }
