@@ -9,16 +9,20 @@ public final class ServiceConfig {
     private final List<String> clusterUrls;
     private final Path workingDir;
 
+    private final int inspectorPort;
+
     public ServiceConfig(
             int selfPort,
             String selfUrl,
             List<String> clusterUrls,
-            Path workingDir
+            Path workingDir,
+            int inspectorPort
     ) {
         this.selfPort = selfPort;
         this.selfUrl = selfUrl;
         this.clusterUrls = clusterUrls;
         this.workingDir = workingDir;
+        this.inspectorPort = inspectorPort;
     }
 
     public int selfPort() {
@@ -37,4 +41,7 @@ public final class ServiceConfig {
         return workingDir;
     }
 
+    public int getInspectorPort() {
+        return inspectorPort;
+    }
 }
